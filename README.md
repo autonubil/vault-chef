@@ -1,0 +1,2 @@
+# vault-chef
+Chef Authentication 
