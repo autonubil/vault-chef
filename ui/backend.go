@@ -3,8 +3,8 @@ package ui
 import (
 	"fmt"
 
-	"github.com/hashicorp/vault/logical"
-	"github.com/hashicorp/vault/logical/framework"
+	"github.com/autonubil/vault/logical"
+	"github.com/autonubil/vault/logical/framework"
 )
 
 func Factory(conf *logical.BackendConfig) (logical.Backend, error) {

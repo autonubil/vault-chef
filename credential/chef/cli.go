@@ -8,7 +8,7 @@ import (
 	"os"
 	"strings"
 
-	"github.com/hashicorp/vault/api"
+	"github.com/autonubil/vault/api"
 )
 
 type CLIHandler struct{}
