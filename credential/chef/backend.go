@@ -32,7 +32,7 @@ func Backend() *backend {
 
 		PathsSpecial: &logical.Paths{ 
 			Unauthenticated: []string{
-				"/login/"+ framework.GenericNameRegex("org") +  "/" + framework.GenericNameRegex("userid"),
+				"login/*",
 			},
 		},
 
