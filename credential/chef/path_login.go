@@ -2,6 +2,9 @@ package chef
 
 import (
 	"fmt"
+	"strings"
+	"sort"
+	"time"
 
 	"github.com/autonubil/vault/helper/policyutil"
 	"github.com/autonubil/vault/logical"
@@ -10,7 +13,7 @@ import (
 
 func pathLogin(b *backend) *framework.Path {
 	return &framework.Path{
-		Pattern: framework.GenericNameRegex("org") + "/login/" + framework.GenericNameRegex("userid"),
+		Pattern: "login/" +framework.GenericNameRegex("org") +  "/" + framework.GenericNameRegex("userid"),
 		Fields: map[string]*framework.FieldSchema{
 			"key": &framework.FieldSchema{
 				Type:        framework.TypeString,
@@ -38,26 +41,62 @@ func pathLogin(b *backend) *framework.Path {
 		Callbacks: map[logical.Operation]framework.OperationFunc{
 			logical.UpdateOperation: b.pathLogin,
 		},
+
+		HelpSynopsis:    pathLoginSyn,
+		HelpDescription: pathLoginDesc,
 	}
 }
 
 func (b *backend) pathLogin(
 	req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
 
-	fmt.Printf("auth/chef: login called with  %v", data)
+	fmt.Printf("auth/chef: login called\n")
 
 	key := data.Get("key").(string)
 	org := data.Get("org").(string)
 	userid := data.Get("userid").(string)
 
-	fmt.Printf("\n\npahtLogin\n", userid)
-	fmt.Printf("\n\nauth/chef: userid %s\n", userid)
-	fmt.Printf("auth/chef: org %s\n", org)
-	fmt.Printf("auth/chef: key %s\n\n", key)
+	ttl := time.Duration(data.Get("ttl").(int)) * time.Second
+ 
+	policies, resp, login_err := b.Login(req, org, userid, key)
 
-	b.Login(req, org, userid, key)
+	if len(policies) == 0 {
+		return resp, login_err
+	}
 
-	return nil, fmt.Errorf("ups!")
+	if (login_err != nil) {
+		return nil, login_err
+	}
+
+	sort.Strings(policies)
+
+
+
+	// Generate a response
+	resp.Auth = &logical.Auth{
+		Policies:    policies,
+		Metadata: map[string]string{
+			"org": 		org,
+			"userid":   userid,
+			"policies": strings.Join(policies, ","),
+		},
+		InternalData: map[string]interface{}{
+			"userid":   userid,
+			"org": 		org,
+			"key" : 	key,
+		},
+		DisplayName: userid,
+		LeaseOptions: logical.LeaseOptions{ 
+			Renewable: true,
+			TTL : ttl,
+		},
+	}
+
+ 
+	fmt.Printf("auth/chef: chefResponse ->  %v\n", resp)
+	fmt.Printf("auth/chef: policies ->  %v\n", policies)
+
+	return resp, nil
 }
 
 func (b *backend) pathLoginRenew(
@@ -99,3 +138,11 @@ func (b *backend) verifyCredentials(req *logical.Request, token string) (*verify
 type verifyCredentialsResp struct {
 	Policies []string
 }
+
+const pathLoginSyn = `
+Log in as user or node of an organization with an private key.
+`
+
+const pathLoginDesc = `
+This endpoint authenticates against a chef server using a private key as user or node .
+`

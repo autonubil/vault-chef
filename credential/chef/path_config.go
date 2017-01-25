@@ -28,6 +28,15 @@ func pathConfig(b *backend) *framework.Path {
 				Type:        framework.TypeString,
 				Description: `Maximum duration after which authentication will be expired`,
 			},
+
+			"admin_user": &framework.FieldSchema{
+				Type:        framework.TypeString,
+				Description: `Chef User used to query ACLs`,
+			},
+			"admin_key": &framework.FieldSchema{
+				Type:        framework.TypeString,
+				Description: `admin user's private key`,
+			},
 		},
 
 		Callbacks: map[logical.Operation]framework.OperationFunc{
@@ -161,8 +170,14 @@ func (b *backend) pathConfigWrite(
 		}
 	}
 
+
+	adminUsername := data.Get("admin_user").(string)
+	adminKey := data.Get("admin_key").(string)
+
 	entry, err := logical.StorageEntryJSON("config", ConfigEntry{
 		BaseURL: baseURL,
+		AdminUser: adminUsername,
+		AdminKey: adminKey,
 		TTL:     ttl,
 		MaxTTL:  maxTTL,
 	})
@@ -172,7 +187,7 @@ func (b *backend) pathConfigWrite(
 	}
 
 	if b.Logger().IsDebug() {
-		b.Logger().Debug("auth/chef: Writing Config: ", "base_url", baseURL, "ttl", ttl, "maxTtl", maxTTL)
+		b.Logger().Debug("auth/chef: Writing Config: ", "base_url", baseURL, "admin_user", adminUsername,  "ttl", ttl, "maxTtl", maxTTL)
 	}
 
 	if err := req.Storage.Put(entry); err != nil {
@@ -184,8 +199,11 @@ func (b *backend) pathConfigWrite(
 
 type ConfigEntry struct {
 	BaseURL string        `json:"base_url" structs:"base_url" mapstructure:"base_url"`
+	AdminUser  string `json:"admin_user" structs:"admin_user" mapstructure:"admin_user"`
+	AdminKey  string `json:"admin_key" structs:"admin_key" mapstructure:"admin_key"`
 	TTL     time.Duration `json:"ttl" structs:"ttl" mapstructure:"ttl"`
 	MaxTTL  time.Duration `json:"max_ttl" structs:"max_ttl" mapstructure:"max_ttl"`
+	
 }
 
 /*

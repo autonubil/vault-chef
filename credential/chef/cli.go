@@ -60,9 +60,9 @@ func (h *CLIHandler) Auth(c *api.Client, m map[string]string) (string, error) {
 
 	data["key"] = keyParam
 
-	path := fmt.Sprintf("auth/%s/%s/login/%s", mount, data["org"], data["userid"])
+	path := fmt.Sprintf("auth/%s/login/%s/%s", mount, data["org"], data["userid"])
 
-	fmt.Printf("auth/chef: calling %s", path)
+	fmt.Printf("auth/chef: calling %s\n", path)
 
 	secret, err := c.Logical().Write(path, data)
 	if err != nil {
@@ -72,7 +72,11 @@ func (h *CLIHandler) Auth(c *api.Client, m map[string]string) (string, error) {
 		return "", fmt.Errorf("empty response from credential provider")
 	}
 
-	return secret.Auth.ClientToken, nil
+	if secret.Auth == nil {
+		return "", fmt.Errorf("empty response without authentication information from credential provider")
+	}
+
+	return  secret.Auth.ClientToken, nil
 }
 
 // CLI Help for Chef Authentication
@@ -89,3 +93,15 @@ on the command line, it will be read from stdin.
 
 	return strings.TrimSpace(help)
 }
+
+
+/*
+chef-server-ctl user-create application-vault Vault Application vault@autonubil.de "*****************"
+# remember the app-key
+ chef-server-ctl grant-server-admin-permissions application-vault
+
+vault write  /auth/chef/config base_url="https://chef.access.autonubil.local" admin_user="application-vault" admin_key=@/home/czeumer/chef-repo/autonubil/.chef/application-vault.pem
+
+
+*/
+
