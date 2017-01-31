@@ -87,7 +87,7 @@ To use it, first configure it through the "config" endpoint, and then
 login by specifying username and password. If password is not provided
 on the command line, it will be read from stdin.
 
-    Example: vault auth -method=chef server=chef.autonubil.com org=autonubil headers='{"X-Ops-Sign"=>"algorithm=sha1;version=1.1;", "X-Ops-Userid"=>"czeumer", "X-Ops-Timestamp"=>"2016-10-20T16:54:01Z", "X-Ops-Content-Hash"=>"2jmj7l5rSw0yVb/vlWAYkK/YBwk=", "X-Ops-Authorization-1"=>"rzgvCv0yddKs+a9fiZk3KEHJgbpyKgOeY4XLFgF4lTVQpwYoJuGbVKujLVqP", "X-Ops-Authorization-2"=>"FpFee6Te2Uxuc8R7ixP9KWeYxn5w1jQ979JeJLJNVa7ltSj18as1GmYWuYhJ", "X-Ops-Authorization-3"=>"roUR7C/kBRASwlB0yIXvkrcTXtS14xZt4fzwzGGuMTvY4Dcb7KoWX03rRw6J", "X-Ops-Authorization-4"=>"3rYQsj4hHnfawUL/X4w0K3u+dkwHPwO/71oj+nDzH+ZIVC+WWy6XnZVQzRLp", "X-Ops-Authorization-5"=>"gcSI1V0Yi64lij8k4BF+NZF6Ey0ZUEUu3fPHd8VO4okw8eDYd1jAsCnsUiJB", "X-Ops-Authorization-6"=>"/e4/CCkdnzm0eY+JRa4kZDUQkGrSE9BC3a11gxvoNg=="}'
+    Example: vault auth -method=chef org=autonubil userid=user key={private key data in pem format}'
 
     `
 

@@ -93,7 +93,6 @@ func (b *backend) pathLogin(
 	}
 
  
-	fmt.Printf("auth/chef: chefResponse ->  %v\n", resp)
 	fmt.Printf("auth/chef: policies ->  %v\n", policies)
 
 	return resp, nil

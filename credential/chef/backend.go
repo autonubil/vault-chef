@@ -90,10 +90,8 @@ func (b *backend)  isInGroups(user string, acl *chef.ACL, cached_groups map[stri
 				 if chefGroup, ok := cached_groups[groupname]; ok {
 					
 					for _,actor := range chefGroup.Actors {
-						//fmt.Printf("auth/chef: check of '%s' for %s (%s) in %s \n", aclType, user, actor, chefGroup.Groupname)
 						if (actor == user){
 							permissions = append(permissions, aclType)
-							// fmt.Printf("auth/chef: MATCH of '%s' for %s (%s) in group %s\n", aclType, user, actor, groupname)
 							aclApplies=true
 							break
 						}
@@ -104,14 +102,13 @@ func (b *backend)  isInGroups(user string, acl *chef.ACL, cached_groups map[stri
 
 	}
 
-	// -fmt.Printf("auth/chef: PERMISSIONS: %v\n", permissions)
 
 	return strutil.RemoveDuplicates(permissions), nil
 }
 
 func (b *backend) getPathPolicies(username, org string, storage logical.Storage, chefClient *chef.Client, cached_groups map[string]chef.Group )  (policies []string, err error ) {
 
-	var permissions []string
+	
 
 	// iterate of all mapped pathes
 	paths, err := storage.List("pathes/")
@@ -124,30 +121,30 @@ func (b *backend) getPathPolicies(username, org string, storage logical.Storage,
 		return policies, nil
 	} else {
 		for _, path := range paths {
+			var permissions []string
 			elements := strings.Split(path, "\\")
-			matches := false
+			has_permissions := false
 			if ( len(elements) == 1  && elements[0] == org) {
+				// members of the org can read the org... 
 				permissions = append(permissions, "read")
 			} else if (len(elements) > 2 && elements[0] == org){
 				// orgs match, get acl
 				acl, err := chefClient.ACLs.Get(elements[1], elements[2])
 				if err != nil {
 					fmt.Printf("Problem getting acl for path %s (does ist even exist?):\n", path)
-					matches = false
+					has_permissions = false
 				}  else {
 					
-					permissions, err := b.isInGroups(username, &acl,  cached_groups, chefClient)
+					permissions, err = b.isInGroups(username, &acl,  cached_groups, chefClient)
 					if err != nil {
 						fmt.Printf("Problem getting acl for path %s:\n", path)
-						matches = false
+						has_permissions = false
 					}  else {
-						matches =  (len(permissions) >0)
-						fmt.Printf("auth/chef: Check ACL for %s %v -> %v [%v]\n", path, acl, permissions, matches)
+						has_permissions = (len(permissions) >0)
 					}
-
 				}
 			}
-			if (matches) {
+			if (has_permissions) {
 				
 				path_config, err := b.Path(storage, path)
 				if err != nil {
@@ -155,15 +152,14 @@ func (b *backend) getPathPolicies(username, org string, storage logical.Storage,
 					continue
 				} 
 
-				// fmt.Printf("auth/chef: MATCHES %s with %v  [%v]\n", path, permissions,  path_config)
-
 				for _, present := range permissions {
-					for _,required := range path_config.Constraint {
+					for _, required := range path_config.Constraint {
 						if (present == required) {
 							for _,policy := range path_config.Policies {
+								fmt.Printf("auth/chef: Appending policy  %s from path\n", policy)
 								policies = append(policies, policy )
 							}
-							break
+							// break
 						}
 					}
 				}
@@ -272,6 +268,7 @@ func (b *backend) getRolePolicies(nodename string, storage logical.Storage, chef
 					continue
 				} 
 				for _,policy := range role_config.Policies {
+						fmt.Printf("auth/chef: Appending policy  %s from role\n", policy)
 						policies = append(policies, policy )
 				}
 
@@ -411,27 +408,7 @@ func (b *backend) Login(req *logical.Request, org string, userid string, key str
 			}
 
 		}
-
-/*
-		// Environment rights?
-		environments, err := client.Environments.List()
-		if err != nil {
-			fmt.Println("Issue listing environments:", err)
-		}
-
-		if (environments != nil) {
-			fmt.Printf("auth/chef: Environments %v\n", environments)
-
-			for environment,_ := range *environments   {
-				acl, err := client.ACLs.Get("environments", environment)
-				if err != nil {
-					fmt.Println("Problem iterating environments:", err)
-				}  else {
-					fmt.Printf("auth/chef: ACL for %s %v\n", environment, acl)
-				}
-			}
-		}
-*/		
+ 	
 	}
 
 	// must be member of the org
