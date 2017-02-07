@@ -43,6 +43,8 @@ func Backend() *backend {
 			pathPathesList(&b),
 			pathRoles(&b),
 			pathRolesList(&b),
+			pathGroups(&b),
+			pathGroupsList(&b),
 
 		}, b.Map.Paths()...),
 
@@ -56,9 +58,26 @@ func Backend() *backend {
 	return &b
 }
 
+func (b *backend)  isInGroups(groupname string, cached_groups map[string]chef.Group, client *chef.Client ) (contained bool, err error) {
+	if _, ok := cached_groups[groupname]; !ok {
+		new_group, err := client.Groups.Get(groupname)
+		if err != nil {
+			fmt.Println("Issue reading group", err)
+			return false , err
+		} else {
+			cached_groups[groupname] = new_group
+		}
+	}
+
+	if _, ok := cached_groups[groupname]; ok {
+		return true, nil
+	}
+
+	return false, nil
+}
 
 
-func (b *backend)  isInGroups(user string, acl *chef.ACL, cached_groups map[string]chef.Group, client *chef.Client ) (permissions []string, err error) {
+func (b *backend)  isInAclGroups(user string, acl *chef.ACL, cached_groups map[string]chef.Group, client *chef.Client ) (permissions []string, err error) {
 	// first run 
 	for aclType, aCLitems := range *acl {
 		aclApplies := false
@@ -108,8 +127,6 @@ func (b *backend)  isInGroups(user string, acl *chef.ACL, cached_groups map[stri
 
 func (b *backend) getPathPolicies(username, org string, storage logical.Storage, chefClient *chef.Client, cached_groups map[string]chef.Group )  (policies []string, err error ) {
 
-	
-
 	// iterate of all mapped pathes
 	paths, err := storage.List("pathes/")
 
@@ -135,7 +152,7 @@ func (b *backend) getPathPolicies(username, org string, storage logical.Storage,
 					has_permissions = false
 				}  else {
 					
-					permissions, err = b.isInGroups(username, &acl,  cached_groups, chefClient)
+					permissions, err = b.isInAclGroups(username, &acl,  cached_groups, chefClient)
 					if err != nil {
 						fmt.Printf("Problem getting acl for path %s:\n", path)
 						has_permissions = false
@@ -152,18 +169,69 @@ func (b *backend) getPathPolicies(username, org string, storage logical.Storage,
 					continue
 				} 
 
-				for _, present := range permissions {
-					for _, required := range path_config.Constraint {
-						if (present == required) {
-							for _,policy := range path_config.Policies {
-								fmt.Printf("auth/chef: Appending policy  %s from path\n", policy)
-								policies = append(policies, policy )
+				if (path_config != nil){
+					for _, present := range permissions {
+						for _, required := range path_config.Constraint {
+							if (present == required) {
+								for _,policy := range path_config.Policies {
+									fmt.Printf("auth/chef: Appending policy  %s from path\n", policy)
+									policies = append(policies, policy )
+								}
+								// break
 							}
-							// break
 						}
 					}
 				}
 				// break;
+			}
+		}
+	}
+
+	return strutil.RemoveDuplicates(policies), nil
+}
+
+
+func (b *backend) getGroupPolicies(storage logical.Storage, chefClient *chef.Client, cached_groups map[string]chef.Group )  (policies []string, err error ) {
+// iterate of all mapped groups
+	groups, err := storage.List("groups/")
+
+	if (err != nil) {
+		return nil, err
+	}
+
+	if ( len(groups) == 0) {	
+		return policies, nil
+	} else {
+		for _, groupname := range groups {
+			var has_permissions bool
+		
+			// orgs match, get acl
+			has_permissions, err = b.isInGroups(groupname,  cached_groups, chefClient)
+			if err != nil {
+				fmt.Printf("Problem getting group membership %s: (does it actually exist?)\n", groupname)
+				continue
+			}
+
+//			fmt.Printf("auth/chef: grup permissions %v from path %s (%v)\n", has_permissions, groupname, cached_groups)
+
+			if (has_permissions) {
+				
+				group_config, err := b.Group(storage, groupname)
+				if err != nil {
+					fmt.Printf("Problem getting config for path %s:\n", groupname)
+					continue
+				} 
+
+				//fmt.Printf("auth/chef: group_config %v from path %s \n", group_config, groupname)
+				
+				if (group_config != nil)  {
+					for _,policy := range group_config.Policies {
+						fmt.Printf("auth/chef: Appending policy  %s from group %s\n", policy, groupname)
+						policies = append(policies, policy )
+					}
+				}
+				
+			// break;
 			}
 		}
 	}
@@ -394,6 +462,21 @@ func (b *backend) Login(req *logical.Request, org string, userid string, key str
 		for _, path_policy := range path_policies {
 			policies = append(policies, path_policy)
 		}
+
+		// users may have groups
+		if ( principal.Type ==  "user" )  {
+			role_policies, err := b.getGroupPolicies(req.Storage, adminClient, cached_groups)
+			if err != nil {
+				fmt.Println("Issue getting role policies:", err)
+				return nil, chefResponse, err
+			}
+
+			for _, path_policy := range role_policies {
+				policies = append(policies, path_policy)
+			}
+
+		}
+
 
 		// clients may have roles
 		if ( principal.Type ==  "client" )  {
