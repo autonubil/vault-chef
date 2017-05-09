@@ -139,7 +139,7 @@ func SanitizeConstraint(constraints []string, addDefault bool) []string {
 		result = append(result, "read")
 	}
 
-	return strutil.RemoveDuplicates(result)
+	return strutil.RemoveDuplicates(result, false)
 }
 
 

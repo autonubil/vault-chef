@@ -122,7 +122,7 @@ func (b *backend)  isInAclGroups(user string, acl *chef.ACL, cached_groups map[s
 	}
 
 
-	return strutil.RemoveDuplicates(permissions), nil
+	return strutil.RemoveDuplicates(permissions, false), nil
 }
 
 func (b *backend) getPathPolicies(username, org string, storage logical.Storage, chefClient *chef.Client, cached_groups map[string]chef.Group )  (policies []string, err error ) {
@@ -187,7 +187,7 @@ func (b *backend) getPathPolicies(username, org string, storage logical.Storage,
 		}
 	}
 
-	return strutil.RemoveDuplicates(policies), nil
+	return strutil.RemoveDuplicates(policies, false), nil
 }
 
 
@@ -236,7 +236,7 @@ func (b *backend) getGroupPolicies(storage logical.Storage, chefClient *chef.Cli
 		}
 	}
 
-	return strutil.RemoveDuplicates(policies), nil
+	return strutil.RemoveDuplicates(policies, false), nil
 }
 
 
@@ -323,7 +323,7 @@ func (b *backend) getRolePolicies(nodename string, storage logical.Storage, chef
 		return nil, err
 	}
 
-	all_roles = strutil.RemoveDuplicates(all_roles) 
+	all_roles = strutil.RemoveDuplicates(all_roles, false) 
 
 	// now check the overlapp
 	for _, rolemapping := range rolemappings {
@@ -346,7 +346,7 @@ func (b *backend) getRolePolicies(nodename string, storage logical.Storage, chef
 
 	}
  
-	return strutil.RemoveDuplicates(policies), nil
+	return strutil.RemoveDuplicates(policies, false), nil
 }
 
 
@@ -519,7 +519,7 @@ func (b *backend) Login(req *logical.Request, org string, userid string, key str
 	policies = append (policies, "default")
 
 	// Policies from each group may overlap
-	policies = strutil.RemoveDuplicates(policies)
+	policies = strutil.RemoveDuplicates(policies, false)
 
 	if len(policies) == 0 {
 		errStr := fmt.Sprintf("%s is not a member of anypolicy mapping ", principal.Type)
